@@ -3,6 +3,8 @@ package edu.byu.cs329;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import edu.byu.cs329.constantfolding.ConstantFolding;
 import edu.byu.cs329.constantfolding.Folding;
 import edu.byu.cs329.utils.JavaSourceUtils;
 import java.net.URI;
@@ -34,6 +36,14 @@ public class TestUtils extends JavaSourceUtils {
   public static void assertDidNotFold(final Object t, String rootName, String expectedName, Folding folderUnderTest) {
     ASTNode root = getASTNodeFor(t, rootName);  
     assertFalse(folderUnderTest.fold(root));
+    ASTNode expected = getASTNodeFor(t, expectedName);
+    assertTrue(expected.subtreeMatch(new ASTMatcher(), root));
+  }
+
+  public static void assertEquals_ConstantFolding(final Object t, String rootName, String expectedName) {
+    ASTNode root = getASTNodeFor(t, rootName);  
+    ConstantFolding.fold(root);
+    log.debug(root.toString());
     ASTNode expected = getASTNodeFor(t, expectedName);
     assertTrue(expected.subtreeMatch(new ASTMatcher(), root));
   }

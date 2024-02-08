@@ -3,7 +3,6 @@ package edu.byu.cs329.constantfolding;
 import edu.byu.cs329.utils.JavaSourceUtils;
 import java.io.File;
 import java.io.PrintWriter;
-import java.util.ArrayList;
 import java.util.List;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.slf4j.Logger;
@@ -23,6 +22,14 @@ public class ConstantFolding {
   /**
    * Performs constant folding.
    *
+   * @requires root != null
+   * @requires (root instanceof CompilationUnit) \/ parent(root) != null
+   * 
+   * @ensures forall fold in specification in BlockFolding, ParenthesizedExpressoinFolding,
+   *          NegationPrefixExpressionFolding, PlusInfixExpressionFolding, 
+   *          LessThanInfixExpressionFolding, IfStatementFolding
+   *          :: fold is completed
+   *
    * @param compilationUnit ASTNode for the compliation unit. 
    * @return The root ASTNode for the constant folded version of the input.
    */
@@ -30,8 +37,11 @@ public class ConstantFolding {
     boolean isChanged = true;
     List<Folding> foldingList = List.of(
         new BlockFolding(),
-        new ParenthesizedExpressionFolding()
-    // TODO: add other ways to fold
+        new ParenthesizedExpressionFolding(),
+        new NegationPrefixExpressionFolding(),
+        new PlusInfixExpressionFolding(),
+        new LessThanInfixExpressionFolding(),
+        new IfStatementFolding()
     );
   
     while (isChanged == true) {
