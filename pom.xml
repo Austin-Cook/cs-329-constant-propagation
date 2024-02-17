@@ -157,6 +157,7 @@
 						<argument>--include-package=edu.byu.cs329.cfg</argument>
 						<argument>--include-package=edu.byu.cs329.rd</argument>
 						<argument>--include-package=edu.byu.cs329.integrationTesting</argument>
+						<argument>--include-package=edu.byu.cs329.constantPropagation</argument>
 					</arguments>
 				</configuration>
 			</plugin>
