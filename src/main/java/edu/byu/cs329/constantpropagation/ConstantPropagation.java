@@ -4,11 +4,10 @@ import edu.byu.cs329.cfg.ControlFlowGraph;
 import edu.byu.cs329.cfg.ControlFlowGraphBuilder;
 import edu.byu.cs329.constantfolding.ConstantFolding;
 import edu.byu.cs329.rd.ReachingDefinitions;
-import edu.byu.cs329.rd.ReachingDefinitionsBuilder;
 import edu.byu.cs329.rd.ReachingDefinitions.Definition;
+import edu.byu.cs329.rd.ReachingDefinitionsBuilder;
 import edu.byu.cs329.utils.JavaSourceUtils;
 import edu.byu.cs329.utils.TreeModificationUtils;
-
 import java.io.File;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -17,18 +16,23 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.HashMap;
-
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.Assignment;
 import org.eclipse.jdt.core.dom.BooleanLiteral;
 import org.eclipse.jdt.core.dom.CharacterLiteral;
+import org.eclipse.jdt.core.dom.DoStatement;
 import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.ExpressionStatement;
+import org.eclipse.jdt.core.dom.IfStatement;
+import org.eclipse.jdt.core.dom.InfixExpression;
+import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.NullLiteral;
 import org.eclipse.jdt.core.dom.NumberLiteral;
+import org.eclipse.jdt.core.dom.ParenthesizedExpression;
+import org.eclipse.jdt.core.dom.PrefixExpression;
+import org.eclipse.jdt.core.dom.ReturnStatement;
 import org.eclipse.jdt.core.dom.SimpleName;
 import org.eclipse.jdt.core.dom.Statement;
 import org.eclipse.jdt.core.dom.StringLiteral;
@@ -37,6 +41,7 @@ import org.eclipse.jdt.core.dom.Type;
 import org.eclipse.jdt.core.dom.TypeLiteral;
 import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
+import org.eclipse.jdt.core.dom.WhileStatement;
 import org.eclipse.jdt.internal.compiler.ast.Literal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,7 +70,7 @@ public class ConstantPropagation {
       node = ConstantFolding.fold(node);
       List<ControlFlowGraph> cfgList = cfgBuilder.build(node);
       List<ReachingDefinitions> rdList = rdBuilder.build(cfgList);
-      assert(cfgList.size() == rdList.size());
+      assert (cfgList.size() == rdList.size());
       for (int i = 0; i < cfgList.size(); i++) {
         if (removeRedundantVariablesInCfg(cfgList.get(i), rdList.get(i))) {
           changeMade = true;
@@ -102,13 +107,15 @@ public class ConstantPropagation {
 
     // FIXME REVERT
     // File inputFile = new File("/home/austin/winter-2024-wsl/cs-329/labs/PropTest1-root.java");
-    File inputFile = new File("/home/austin/winter-2024-wsl/cs-329/labs/constant-propagation-Austin-Cook/src/test/resources/constantPropagationInputs/should_NotPropagate_when_ThereAreTwoDefinitions-root.java");
+    File inputFile = new File("/home/austin/winter-2024-wsl/cs-329/labs/constant-propagation-Austin-Cook/src/test/resources/constantPropagationInputs/should_Propagate_when_ThereIsOneDefinition.java");
     ASTNode node = JavaSourceUtils.getCompilationUnit(inputFile.toURI());
     ConstantPropagation.propagate(node);
     
     try {
-      PrintWriter writer = new PrintWriter("/home/austin/winter-2024-wsl/cs-329/labs/Out.java", "UTF-8");
-      // PrintWriter writer = new PrintWriter("/home/austin/winter-2024-wsl/cs-329/labs/PropTest1.java", "UTF-8");
+      PrintWriter writer = new PrintWriter("/home/austin/winter-2024-wsl/cs-329/labs/Out.java", 
+          "UTF-8");
+      // PrintWriter writer = new PrintWriter("/home/austin/winter-2024-wsl/cs-329/labs/PropTest1.java", 
+      //     "UTF-8");
       writer.print(node.toString());
       writer.close();
     } catch (Exception e) {
@@ -142,11 +149,11 @@ public class ConstantPropagation {
    */
   private static boolean removeRedundantVariablesInStatement(Statement n, ControlFlowGraph cfg,
       ReachingDefinitions rd, Set<Statement> visited) {
-    Set<Definition> defs = rd.getReachingDefinitions(n);
     boolean changeMade = false;
     visited.add(n);
 
     // get number of reaching definitions for each variable
+    Set<Definition> defs = rd.getReachingDefinitions(n);
     System.out.println("NEW STATEMENT");
     System.out.print(n.toString());
     System.out.println("Total # defs: " + defs.size());
@@ -177,8 +184,7 @@ public class ConstantPropagation {
       }
 
       // get occurances of var in n
-      VarOccVisitor visitor = new VarOccVisitor();
-      visitor.varToFind = varName;
+      VarOccVisitor visitor = new VarOccVisitor(varName);
       n.accept(visitor);
       ArrayList<SimpleName> varOccToReplace = visitor.varOccList;
 
@@ -191,14 +197,16 @@ public class ConstantPropagation {
       System.out.println("Exists " + varOccToReplace.size() + " times in n");
 
       ASTNode defLiteral = getDefinitionLiteral(defStmt);
-      if(defLiteral == null) {
+      if (defLiteral == null) {
         // definition is not a literal
         continue;
       }
 
       ASTNode defLiteralCopy = copyLiteral(defLiteral);
       for (SimpleName varOcc : varOccToReplace) {
-        System.out.println("Relpacing a var");
+        System.out.println("Relpacing a var: " + varOcc.getIdentifier());
+        System.out.println("Going inside parent: " + varOcc.getParent().toString());
+        System.out.flush();
         TreeModificationUtils.replaceChildInParent(varOcc, defLiteralCopy);
         changeMade = true;
       }
@@ -209,7 +217,9 @@ public class ConstantPropagation {
     if (!(succs == null)) {
       for (Statement succ : succs) {
         if (!visited.contains(succ) && succ != cfg.getEnd()) {
-          removeRedundantVariablesInStatement(succ, cfg, rd, visited);
+          if (removeRedundantVariablesInStatement(succ, cfg, rd, visited)) {
+            changeMade = true;
+          }
         }
       }
     }
@@ -232,7 +242,7 @@ public class ConstantPropagation {
     if (n instanceof ExpressionStatement) {
       // is ExpressionStatement
       ExpressionStatement exp = (ExpressionStatement) n;
-      if (exp.getExpression() instanceof Assignment) {
+      if (exp.getExpression() instanceof Assignment) {    // TODO YOU CAN FLATTEN THIS
         // is Assignment (case 1)
         Assignment assignment = (Assignment) exp.getExpression();
         Expression definition = assignment.getRightHandSide();
@@ -247,10 +257,10 @@ public class ConstantPropagation {
           getVariableDeclarationFragmentList(((VariableDeclarationStatement) n).fragments());
       VariableDeclarationFragment varDeclFrag = varDeclFragList.get(0);
       Expression definition = varDeclFrag.getInitializer();
-        if ((definition != null) && isLiteralExpression(definition)) {
-          // definition value is a literal
-          definitionLiteral = definition;
-        }
+      if ((definition != null) && isLiteralExpression(definition)) {
+        // definition value is a literal
+        definitionLiteral = definition;
+      }
     }
 
     return definitionLiteral;
@@ -303,24 +313,94 @@ public class ConstantPropagation {
     return varDeclList;
   }
 
+  private static List<Expression> getExpressionList(Object list) {
+    @SuppressWarnings("unchecked")
+    List<Expression> expressionList = (List<Expression>) (list);
+    return expressionList;
+  }
+
   /**
    * Gets a list of all SimpleName ASTNode occurances in a statement matching a variable name.
    *
-   * <p>Begin visit on the statement node in which Usage: statement.accept(varOccVisitor). Note that
-   * this does NOT filter when there is not only one definition for the var which is also a literal 
-   * - that filtering occurs elsewhere.
+   * <p>Set varToFind to the variable name to search for prior to accepting this visitor. Begin 
+   * the visit on the statement node in which to search for instances of the variable/
    */
   static class VarOccVisitor extends ASTVisitor {
     public ArrayList<SimpleName> varOccList = new ArrayList<>();
     public String varToFind = null;
 
-    @Override
-    public void endVisit(SimpleName simpleName) {
-      assert(varToFind != null);
-      if (simpleName.getIdentifier().equals(varToFind)) {
-        
+    public VarOccVisitor(String varToFind) {
+      this.varToFind = varToFind;
+    }
+
+    private void addIfSimpleame(Expression exp) {
+      if (exp instanceof SimpleName) {
+        SimpleName simpleName = (SimpleName) exp;
+        if (simpleName.getIdentifier().equals(varToFind))
         varOccList.add(simpleName);
       }
+    }
+
+    @Override
+    public void endVisit(IfStatement ifStatement) {
+      addIfSimpleame(ifStatement.getExpression());
+    }
+
+    @Override
+    public void endVisit(WhileStatement whileStatement) {
+      addIfSimpleame(whileStatement.getExpression());
+    }
+
+    @Override
+    public void endVisit(DoStatement doStatement) {
+      addIfSimpleame(doStatement.getExpression());
+    }
+
+    @Override
+    public void endVisit(InfixExpression infixExpression) {
+      addIfSimpleame(infixExpression.getLeftOperand());
+      addIfSimpleame(infixExpression.getRightOperand());
+      List<Expression> extendedOperands = getExpressionList(infixExpression.extendedOperands());
+      if (extendedOperands != null) {
+        for (Expression extendedOperand : extendedOperands) {
+          addIfSimpleame(extendedOperand);
+        }
+      }
+    }
+
+    @Override
+    public void endVisit(PrefixExpression prefixExpression) {
+      addIfSimpleame(prefixExpression.getOperand());
+    }
+
+    @Override
+    public void endVisit(ParenthesizedExpression parenthesizedExpression) {
+      addIfSimpleame(parenthesizedExpression.getExpression());
+    }
+
+    @Override
+    public void endVisit(VariableDeclarationFragment variableDeclarationFragment) {
+      addIfSimpleame(variableDeclarationFragment.getInitializer());
+    }
+
+    @Override
+    public void endVisit(Assignment assignment) {
+      addIfSimpleame(assignment.getRightHandSide());
+    }
+
+    @Override
+    public void endVisit(MethodInvocation methodInvocation) {
+      List<Expression> arguments = getExpressionList(methodInvocation.arguments());
+      if (arguments != null) {
+        for (Expression argument : arguments) {
+          addIfSimpleame(argument);
+        }
+      }
+    }
+
+    @Override
+    public void endVisit(ReturnStatement returnStatement) {
+      addIfSimpleame(returnStatement.getExpression());
     }
   }
 }
