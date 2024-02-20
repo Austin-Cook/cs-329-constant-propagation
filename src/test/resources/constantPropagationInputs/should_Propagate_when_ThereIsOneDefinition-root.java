@@ -3,18 +3,6 @@ public class Name {
         boolean b = true;
         boolean b2 = b;
 
-        char c = 'c';
-        char c2 = c;
-
-        Integer nl = null;
-        Integer nl2 = nl;
-
-        String s = "str";
-        String s2 = s;
-
-        Class<?> t = String.class;
-        Class<?> t2 = t;
-
         int n = 1;
         int n2 = n;
 
@@ -25,6 +13,7 @@ public class Name {
         n2 = (n);
         n2 = n;
         int n3 = n + n + n2;
+        // boolean b3 = b && b2 && b2;
         return n;
     }
 }

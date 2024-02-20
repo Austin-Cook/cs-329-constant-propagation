@@ -56,6 +56,11 @@ public class ConstantPropagation {
 
   static final Logger log = LoggerFactory.getLogger(ConstantPropagation.class);
 
+  private static boolean changeMade = true;
+  private static ControlFlowGraph cfg = null;
+  private static ReachingDefinitions rd = null;
+  private static Set<Statement> visited = null;
+
   /**
    * Performs constant propagation.
    *
@@ -64,7 +69,7 @@ public class ConstantPropagation {
   public static void propagate(ASTNode node) {
     ControlFlowGraphBuilder cfgBuilder = new ControlFlowGraphBuilder();
     ReachingDefinitionsBuilder rdBuilder = new ReachingDefinitionsBuilder();
-    boolean changeMade = true;
+    changeMade = true;
     while (changeMade) {
       changeMade = false;
       node = ConstantFolding.fold(node);
@@ -72,9 +77,10 @@ public class ConstantPropagation {
       List<ReachingDefinitions> rdList = rdBuilder.build(cfgList);
       assert (cfgList.size() == rdList.size());
       for (int i = 0; i < cfgList.size(); i++) {
-        if (removeRedundantVariablesInCfg(cfgList.get(i), rdList.get(i))) {
-          changeMade = true;
-        }
+        cfg = cfgList.get(i);
+        rd = rdList.get(i);
+        visited =  new HashSet<>();
+        traverseTree(cfg.getStart());
       }
     }
   }
@@ -124,20 +130,6 @@ public class ConstantPropagation {
   }
 
   /**
-   * Replaces all variables in a control graph that are have only one reaching definition
-   * and are assigned to a literal.
-   *
-   * @param cfg the ControlFlowGraph under propagation
-   * @param rd the ReachingDefinitions for all statements in cfg
-   * @return true if at least one variable was reduced to a literal, false otherwise
-   */
-  private static boolean removeRedundantVariablesInCfg(ControlFlowGraph cfg, ReachingDefinitions rd) {
-    Set<Statement> visited = new HashSet<>();
-    Statement start = cfg.getStart();
-    return removeRedundantVariablesInStatement(start, cfg, rd, visited);
-  }
-
-  /**
    * Replaces all variables in a given statement that have only one reaching definition
    * and are assigned to a literal.
    *
@@ -147,16 +139,14 @@ public class ConstantPropagation {
    * @param visited all statements in cfg already visited
    * @return true if at least one variable was reduced to a literal, false otherwise
    */
-  private static boolean removeRedundantVariablesInStatement(Statement n, ControlFlowGraph cfg,
-      ReachingDefinitions rd, Set<Statement> visited) {
-    boolean changeMade = false;
+  private static void traverseTree(Statement n) {
     visited.add(n);
 
     // get number of reaching definitions for each variable
     Set<Definition> defs = rd.getReachingDefinitions(n);
-    System.out.println("NEW STATEMENT");
-    System.out.print(n.toString());
-    System.out.println("Total # defs: " + defs.size());
+    // System.out.println("NEW STATEMENT");
+    // System.out.print(n.toString());
+    // System.out.println("Total # defs: " + defs.size());
     Map<String, ArrayList<Statement>> varToDefStmtMap = new HashMap<>();
     for (Definition d : defs) {
       String varName = d.name.getIdentifier();
@@ -173,7 +163,7 @@ public class ConstantPropagation {
     for (String varName : varToDefStmtMap.keySet()) {
       if (varToDefStmtMap.get(varName).size() != 1) {
         // more than one definition for the var reaches n
-        System.out.println("Not exectly 1 RD, continuing");
+        // System.out.println("Not exectly 1 RD, continuing");
         continue;
       }
 
@@ -193,8 +183,8 @@ public class ConstantPropagation {
         continue;
       }
 
-      System.out.println("Var with only 1 def: " + varName);
-      System.out.println("Exists " + varOccToReplace.size() + " times in n");
+      // System.out.println("Var with only 1 def: " + varName);
+      // System.out.println("Exists " + varOccToReplace.size() + " times in n");
 
       ASTNode defLiteral = getDefinitionLiteral(defStmt);
       if (defLiteral == null) {
@@ -204,9 +194,9 @@ public class ConstantPropagation {
 
       ASTNode defLiteralCopy = copyLiteral(defLiteral);
       for (SimpleName varOcc : varOccToReplace) {
-        System.out.println("Relpacing a var: " + varOcc.getIdentifier());
-        System.out.println("Going inside parent: " + varOcc.getParent().toString());
-        System.out.flush();
+        // System.out.println("Relpacing a var: " + varOcc.getIdentifier());
+        // System.out.println("Going inside parent: " + varOcc.getParent().toString());
+        // System.out.flush();
         TreeModificationUtils.replaceChildInParent(varOcc, defLiteralCopy);
         changeMade = true;
       }
@@ -217,14 +207,11 @@ public class ConstantPropagation {
     if (!(succs == null)) {
       for (Statement succ : succs) {
         if (!visited.contains(succ) && succ != cfg.getEnd()) {
-          if (removeRedundantVariablesInStatement(succ, cfg, rd, visited)) {
-            changeMade = true;
-          }
+
+          traverseTree(succ);
         }
       }
     }
-
-    return changeMade;
   }
 
   /**
@@ -268,10 +255,6 @@ public class ConstantPropagation {
 
   private static boolean isLiteralExpression(ASTNode exp) {
     return (exp instanceof BooleanLiteral) 
-        || (exp instanceof CharacterLiteral)
-        || (exp instanceof NullLiteral)
-        || (exp instanceof StringLiteral)
-        || (exp instanceof TypeLiteral)
         || (exp instanceof NumberLiteral);
   }
 
@@ -287,19 +270,6 @@ public class ConstantPropagation {
 
     if (exp instanceof BooleanLiteral) {
       copy = ast.newBooleanLiteral(((BooleanLiteral) exp).booleanValue());
-    } else if (exp instanceof CharacterLiteral) {
-      copy = ast.newCharacterLiteral();
-      ((CharacterLiteral) copy).setCharValue(((CharacterLiteral) exp).charValue());
-    } else if (exp instanceof NullLiteral) {
-      copy = ast.newNullLiteral();
-    } else if (exp instanceof StringLiteral) {
-      copy = ast.newStringLiteral();
-      ((StringLiteral) copy).setLiteralValue(((StringLiteral) exp).getLiteralValue());
-    } else if (exp instanceof TypeLiteral) {
-      copy = ast.newTypeLiteral();
-      Type oldType = ((TypeLiteral) exp).getType();
-      Type copiedType = (Type) ASTNode.copySubtree(ast, oldType);
-      ((TypeLiteral) copy).setType(copiedType);
     } else if (exp instanceof NumberLiteral) {
       copy = ast.newNumberLiteral(((NumberLiteral) exp).getToken());
     }
