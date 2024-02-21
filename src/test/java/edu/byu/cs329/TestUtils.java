@@ -56,4 +56,10 @@ public class TestUtils extends JavaSourceUtils {
     ASTNode expected = getASTNodeFor(t, expectedName);
     assertTrue(expected.subtreeMatch(new ASTMatcher(), root));
   }
+
+  public static void assertSubtreesEqual(final Object t, String actualName, String expectedName) {
+    ASTNode actual = getASTNodeFor(t, actualName);
+    ASTNode expected = getASTNodeFor(t, expectedName);
+    assertTrue(expected.subtreeMatch(new ASTMatcher(), actual));
+  }
 }

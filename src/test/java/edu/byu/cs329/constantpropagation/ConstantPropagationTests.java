@@ -1,5 +1,7 @@
 package edu.byu.cs329.constantpropagation;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -68,6 +70,71 @@ public class ConstantPropagationTests {
     
     @Nested
     class WhiteBoxTests {
-        // TODO
+        @Test
+        @Tag("WhiteBox")
+        @DisplayName("Should not throw exception when create instance of constant propagation")
+        public void should_NotThrowException_when_CreateInstanceOfConstantPropagation() {
+            assertDoesNotThrow(() -> {
+                new ConstantPropagation();
+            });
+        }
+
+        @Test
+        @Tag("WhiteBox")
+        @Tag("Main")
+        @DisplayName("Should not throw exception when main run with invalid number of args")
+        public void should_NotThrowException_when_MainRunWithInvalidNumberOfArgs() {
+            String[] args = new String[1];
+            args[0] = "src/test/resources/constantPropagationInputs/should_NotPropagate_when_ThereIsNothingToPropagate-root.java";
+            ConstantPropagation.main(args);
+            assertDoesNotThrow(() -> {
+                ConstantPropagation.main(args);
+            });
+        }
+
+        @Test
+        @Tag("WhiteBox")
+        @Tag("Main")
+        @DisplayName("Should not throw exception when main run and second arg is null")
+        public void should_NotThrowException_when_MainRunAndSecondArgIsNull() {
+            String[] args = new String[2];
+            args[0] = "src/test/resources/constantPropagationInputs/should_NotPropagate_when_ThereIsNothingToPropagate-root.java";
+            args[1] = null;
+            assertDoesNotThrow(() -> {
+                ConstantPropagation.main(args);
+            });
+        }
+
+        @Test
+        @Tag("WhiteBox")
+        @Tag("Main")
+        @DisplayName("Should not propagate when there is nothing to propagate and run from main")
+        public void should_NotPropagate_when_ThereIsNothingToPropagateAndRunFromMain() {
+            String root = "constantPropagationInputs/should_NotPropagate_when_ThereIsNothingToPropagate-root.java";
+            String actual = "out/should_NotPropagate_when_ThereIsNothingToPropagate.java";
+            String[] args = new String[2];
+            args[0] = "src/test/resources/" + root;
+            args[1] = "src/test/resources/" + actual;
+            ConstantPropagation.main(args);
+            TestUtils.assertSubtreesEqual(this, root, actual);
+        }
+        
+        @Test
+        @Tag("WhiteBox")
+        @DisplayName("Should propagate when InfixOperator and no extended operands")
+        public void should_Propagate_when_InfixOperatorAndNoExtendedOperands() {
+            String rootName = "constantPropagationInputs/whiteBox/should_Propagate_when_InfixOperatorAndNoExtendedOperands-root.java";
+            String expectedName = "constantPropagationInputs/whiteBox/should_Propagate_when_InfixOperatorAndNoExtendedOperands.java";
+            TestUtils.assertEquals_ConstantPropagation(this, rootName, expectedName);
+        }
+
+        @Test
+        @Tag("WhiteBox")
+        @DisplayName("Should not propagate when literal not number or boolean")
+        public void should_NotPropagate_when_LiteralNotNumberOrBoolean() {
+            String rootName = "constantPropagationInputs/whiteBox/should_NotPropagate_when_LiteralNotNumberOrBoolean-root.java";
+            String expectedName = "constantPropagationInputs/whiteBox/should_NotPropagate_when_LiteralNotNumberOrBoolean-root.java";
+            TestUtils.assertEquals_ConstantPropagation(this, rootName, expectedName);
+        }
     }
 }

@@ -92,7 +92,6 @@ public class ConstantPropagation {
       node = ConstantFolding.fold(node);
       List<ControlFlowGraph> cfgList = cfgBuilder.build(node);
       List<ReachingDefinitions> rdList = rdBuilder.build(cfgList);
-      assert (cfgList.size() == rdList.size());
       for (int i = 0; i < cfgList.size(); i++) {
         initState(cfgList.get(i), rdList.get(i));
         traverseTree(cfg.getStart());
@@ -145,10 +144,9 @@ public class ConstantPropagation {
       replaceIfPossible(infixExpression.getLeftOperand());
       replaceIfPossible(infixExpression.getRightOperand());
       List<Expression> extendedOperands = getExpressionList(infixExpression.extendedOperands());
-      if (extendedOperands != null) {
-        for (Expression extendedOperand : extendedOperands) {
-          replaceIfPossible(extendedOperand);
-        }
+      // assert (extendedOperands != null);
+      for (Expression extendedOperand : extendedOperands) {
+        replaceIfPossible(extendedOperand);
       }
     }
 
@@ -175,10 +173,9 @@ public class ConstantPropagation {
     @Override
     public void endVisit(MethodInvocation methodInvocation) {
       List<Expression> arguments = getExpressionList(methodInvocation.arguments());
-      if (arguments != null) {
-        for (Expression argument : arguments) {
-          replaceIfPossible(argument);
-        }
+      // assert (arguments != null);
+      for (Expression argument : arguments) {
+        replaceIfPossible(argument);
       }
     }
 
@@ -234,12 +231,12 @@ public class ConstantPropagation {
       if (n instanceof ExpressionStatement) {
         // is ExpressionStatement
         ExpressionStatement exp = (ExpressionStatement) n;
-        if (exp.getExpression() instanceof Assignment) {
-          // is Assignment (case 1)
-          Assignment assignment = (Assignment) exp.getExpression();
-          def = assignment.getRightHandSide();
-        }
-      } else if (n instanceof VariableDeclarationStatement) {
+        // assert (exp.getExpression() instanceof Assignment);
+        // is Assignment (case 1)
+        Assignment assignment = (Assignment) exp.getExpression();
+        def = assignment.getRightHandSide();
+      } else {
+        // assert (n instanceof VariableDeclarationStatement);
         // is VariableDeclarationStatement (case 2)
         List<VariableDeclarationFragment> varDeclFragList =
             getVariableDeclarationFragmentList(((VariableDeclarationStatement) n).fragments());
@@ -263,7 +260,8 @@ public class ConstantPropagation {
 
       if (exp instanceof BooleanLiteral) {
         copy = ast.newBooleanLiteral(((BooleanLiteral) exp).booleanValue());
-      } else if (exp instanceof NumberLiteral) {
+      } else {
+        // assert (exp instanceof NumberLiteral);
         copy = ast.newNumberLiteral(((NumberLiteral) exp).getToken());
       }
 
