@@ -10,6 +10,11 @@ public class Name {
         b2 = !b;
         n2 = (n);
         n2 = n;
+        methodParams(b, n);
         return n;
+    }
+
+    void methodParams(boolean b, int n) {
+        // do nothing
     }
 }
