@@ -157,6 +157,7 @@
 						<argument>--include-package=edu.byu.cs329.cfg</argument>
 						<argument>--include-package=edu.byu.cs329.rd</argument>
 						<argument>--include-package=edu.byu.cs329.integrationTesting</argument>
+						<argument>--include-package=edu.byu.cs329.constantPropagation</argument>
 					</arguments>
 				</configuration>
 			</plugin>
@@ -185,7 +186,7 @@
 						</goals>
 						<configuration>
 						  <!-- TODO: Set skip below to false for Part 3 -->
-							<skip>true</skip>
+							<skip>false</skip>
 							<rules>
 								<rule>
 									<element>PACKAGE</element>
